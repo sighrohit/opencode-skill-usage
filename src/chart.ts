@@ -24,25 +24,31 @@ function grandTotal(data: UsageData, metric: Metric): number {
 
 export function toRows(data: UsageData, metric: Metric, limit: number): Row[] {
   const total = grandTotal(data, metric)
-  const rows: Row[] = Object.keys(data.skills).map((skillID) => {
+  const entries = Object.keys(data.skills).map((skillID) => {
     const stats = data.skills[skillID]!
+    const raw = metricValue(stats, metric)
     // `tokens` is a display value and is rounded; `share` is a proportion and stays on the
     // raw basis so it sums to 1 and never contradicts `totals`. Sub-token attribution
     // (the tracker's even split) legitimately rounds to 0 tokens with a non-zero share.
-    const raw = metricValue(stats, metric)
     return {
-      skillID,
-      loads: stats.loads,
-      tokens: Math.round(raw),
-      share: total > 0 ? raw / total : 0,
+      raw,
+      row: {
+        skillID,
+        loads: stats.loads,
+        tokens: Math.round(raw),
+        share: total > 0 ? raw / total : 0,
+      } satisfies Row,
     }
   })
-  rows.sort((a, b) => {
-    if (b.tokens !== a.tokens) return b.tokens - a.tokens
-    if (b.loads !== a.loads) return b.loads - a.loads
-    return a.skillID < b.skillID ? -1 : a.skillID > b.skillID ? 1 : 0
+  // Sort on the raw metric value, never the rounded display value: rounding can
+  // make two rows collide or invert, which would contradict the documented
+  // descending order while `share` (also raw) still showed the true ranking.
+  entries.sort((a, b) => {
+    if (b.raw !== a.raw) return b.raw - a.raw
+    if (b.row.loads !== a.row.loads) return b.row.loads - a.row.loads
+    return a.row.skillID < b.row.skillID ? -1 : a.row.skillID > b.row.skillID ? 1 : 0
   })
-  return rows.slice(0, Math.max(0, limit))
+  return entries.slice(0, Math.max(0, limit)).map((entry) => entry.row)
 }
 
 export function totals(rows: Row[], data: UsageData, metric: Metric): Totals {
