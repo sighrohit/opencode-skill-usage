@@ -46,6 +46,9 @@ With options:
 `opencode.json`'s `plugins` field accepts either a bare package-name string or an
 object with `package` and `options` keys.
 
+One entry is enough: the host auto-probes a package's `tui` subpath as well as its main
+entry, so this single `plugins` entry loads both the server command and the TUI panel.
+
 ## Usage
 
 - `/skill-usage` — opens the panel in the TUI; posts a markdown table into the chat
