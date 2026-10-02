@@ -25,12 +25,15 @@ export function toRows(data: UsageData, metric: Metric, limit: number): Row[] {
   const total = grandTotal(data, metric)
   const rows: Row[] = Object.keys(data.skills).map((skillID) => {
     const stats = data.skills[skillID]!
-    const tokens = Math.round(metricValue(stats, metric))
+    // `tokens` is a display value and is rounded; `share` is a proportion and stays on the
+    // raw basis so it sums to 1 and never contradicts `totals`. Sub-token attribution
+    // (the tracker's even split) legitimately rounds to 0 tokens with a non-zero share.
+    const raw = metricValue(stats, metric)
     return {
       skillID,
       loads: stats.loads,
-      tokens,
-      share: total > 0 ? tokens / total : 0,
+      tokens: Math.round(raw),
+      share: total > 0 ? raw / total : 0,
     }
   })
   rows.sort((a, b) => {
@@ -46,14 +49,15 @@ export function totals(rows: Row[], data: UsageData, metric: Metric): Totals {
   // not just the limited rows, so it is intentionally unused in the computation.
   void rows
   let loads = 0
-  let tokens = 0
-  const ids = Object.keys(data.skills)
-  for (const id of ids) {
-    const stats = data.skills[id]!
-    loads += stats.loads
-    tokens += metricValue(stats, metric)
+  for (const id of Object.keys(data.skills)) {
+    loads += data.skills[id]!.loads
   }
-  return { skills: ids.length, loads, tokens: Math.round(tokens) }
+  // Same helper `toRows` divides by, so the two can never disagree.
+  return {
+    skills: Object.keys(data.skills).length,
+    loads,
+    tokens: Math.round(grandTotal(data, metric)),
+  }
 }
 
 export function barSegments(share: number, width: number): { filled: number; empty: number } {

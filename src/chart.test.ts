@@ -55,29 +55,27 @@ describe("toRows", () => {
   })
 
   it("computes share against grand total so shares sum to ~1", () => {
-    const all = toRows(
-      data({
-        a: { contentTokens: 100 },
-        b: { contentTokens: 200 },
-        c: { contentTokens: 700 },
-      }),
-      "content",
-      3,
-    )
+    // Fractional values: this is the shape the tracker's even split actually stores.
+    const fractional = data({
+      a: { contentTokens: 100 / 3 },
+      b: { contentTokens: 200 / 3 },
+      c: { contentTokens: 700 / 3 },
+    })
+    const all = toRows(fractional, "content", 3)
     expect(all.reduce((sum, r) => sum + r.share, 0)).toBeCloseTo(1, 10)
 
-    const limited = toRows(
-      data({
-        a: { contentTokens: 100 },
-        b: { contentTokens: 200 },
-        c: { contentTokens: 700 },
-      }),
-      "content",
-      2,
-    )
-    // limited[0] is c (700) — 700 of the full 1000, not of the 900 shown rows
+    const limited = toRows(fractional, "content", 2)
+    // limited[0] is c — 700/3 of the full 1000, not of the 900 shown in the two rows
     expect(limited[0]!.share).toBeCloseTo(0.7, 10)
     expect(limited.reduce((sum, r) => sum + r.share, 0)).toBeCloseTo(0.9, 10)
+  })
+
+  it("keeps share on the raw basis while rounding tokens", () => {
+    const rows = toRows(data({ a: { contentTokens: 0.4 }, b: { contentTokens: 0.6 } }), "content", 2)
+    // Both round to 0 tokens, but the proportions still reflect the real split.
+    expect(rows.map((r) => r.tokens)).toEqual([1, 0])
+    expect(rows[0]!.share).toBeCloseTo(0.6, 10)
+    expect(rows[1]!.share).toBeCloseTo(0.4, 10)
   })
 
   it("yields share 0 instead of NaN when there are no skills", () => {
@@ -224,6 +222,45 @@ describe("renderMarkdown", () => {
       tokens: 1000000,
     })
     expect(out).toContain("**Total:** 1M tokens · 500 loads · 40 skills")
+  })
+
+  // The shape the tracker's even split really produces: 1 token of output split
+  // three ways stores 1/3 per skill, so every skill rounds to 0 display tokens.
+  const split = data({
+    a: { loads: 1, spend: spend({ output: 1 / 3 }) },
+    b: { loads: 1, spend: spend({ output: 1 / 3 }) },
+    c: { loads: 1, spend: spend({ output: 1 / 3 }) },
+  })
+
+  it("does not contradict itself on sub-token even-split spend", () => {
+    const splitRows = toRows(split, "spend", 10)
+    const t = totals(splitRows, split, "spend")
+    expect(t).toEqual({ skills: 3, loads: 3, tokens: 1 })
+
+    // Display rounding hides the sub-token amount, but the share stays truthful.
+    expect(splitRows.every((r) => r.tokens === 0)).toBe(true)
+    for (const r of splitRows) expect(r.share).toBeCloseTo(1 / 3, 10)
+
+    const md = renderMarkdown(splitRows, "spend", t)
+    // The spend is visible: real percentages and filled bars, not silent zeros.
+    expect(md).toContain("33%")
+    expect(md).toContain("████")
+    expect(md).not.toMatch(/\|\s*0\s*\|\s*░+\s*0%/)
+    // And the total line is the same number `totals` reports, from the same sum.
+    expect(md).toContain(
+      `**Total:** ${formatTokens(t.tokens)} tokens · ${t.loads} loads · ${t.skills} skills`,
+    )
+  })
+
+  it("keeps the total global when sub-token rows are truncated", () => {
+    const one = toRows(split, "spend", 1)
+    const t = totals(one, split, "spend")
+    // Summing the visible rows would give 1/3 -> 0 and contradict the row's 33% share.
+    expect(t.tokens).toBe(1)
+    expect(one[0]!.share).toBeCloseTo(1 / 3, 10)
+    expect(renderMarkdown(one, "spend", t)).toContain(
+      `**Total:** ${formatTokens(t.tokens)} tokens · ${t.loads} loads · ${t.skills} skills`,
+    )
   })
 })
 
