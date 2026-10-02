@@ -54,6 +54,20 @@ describe("toRows", () => {
     expect(rows.map((r) => r.skillID)).toEqual(["alpha", "beta", "zeta"])
   })
 
+  it("sorts by the raw metric value, not the rounded display value", () => {
+    // Both rows display 100 tokens, so a sort on the rounded value would fall
+    // through to the skillID tiebreak and put "alpha" first. The raw values
+    // order the other way, and `share` (raw) agrees with the raw order.
+    const rows = toRows(
+      data({ alpha: { contentTokens: 100.3 }, zulu: { contentTokens: 100.4 } }),
+      "content",
+      10,
+    )
+    expect(rows.map((r) => r.skillID)).toEqual(["zulu", "alpha"])
+    expect(rows.map((r) => r.tokens)).toEqual([100, 100])
+    expect(rows[0]!.share).toBeGreaterThan(rows[1]!.share)
+  })
+
   it("computes share against grand total so shares sum to ~1", () => {
     // Fractional values: this is the shape the tracker's even split actually stores.
     const fractional = data({
@@ -127,12 +141,15 @@ describe("totals", () => {
   })
 
   it("switches metric with spendTotal", () => {
+    // Deliberately asymmetric: content totals 12, spend totals 10. If `totals`
+    // ignored its `metric` argument, one of the two assertions below would see
+    // the other metric's sum and fail.
     const spendData = data({
       a: { contentTokens: 5, loads: 1, spend: spend({ input: 1, output: 2 }) },
-      b: { contentTokens: 5, loads: 1, spend: spend({ reasoning: 3, cacheWrite: 4 }) },
+      b: { contentTokens: 7, loads: 1, spend: spend({ reasoning: 3, cacheWrite: 4 }) },
     })
     expect(totals([], spendData, "spend")).toEqual({ skills: 2, loads: 2, tokens: 10 })
-    expect(totals([], spendData, "content")).toEqual({ skills: 2, loads: 2, tokens: 10 })
+    expect(totals([], spendData, "content")).toEqual({ skills: 2, loads: 2, tokens: 12 })
   })
 })
 

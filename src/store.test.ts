@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { emptyData } from "./types.js"
-import { createFileStore, createPluginStore } from "./store.js"
+import { createFileStore, createPluginStore, STORAGE_KEY } from "./store.js"
 
 function createFakeStorage() {
   const map = new Map<string, unknown>()
@@ -45,6 +45,12 @@ function sampleData() {
 }
 
 describe("createPluginStore", () => {
+  it("uses the documented storage key", () => {
+    // The README's Privacy section names this key verbatim; renaming it would
+    // silently orphan every consumer's stored data.
+    expect(STORAGE_KEY).toBe("skill-usage:stats")
+  })
+
   it("load returns emptyData when nothing stored", async () => {
     const { storage } = createFakeStorage()
     const store = createPluginStore(storage)
