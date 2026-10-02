@@ -15,6 +15,9 @@
     "@opencode/plugin": "^2.0.22",
     "zod": "4.1.8"
   },
+  "overrides": {
+    "zod": "4.1.8"
+  },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "typescript": "^5.0.0",
