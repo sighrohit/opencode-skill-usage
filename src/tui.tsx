@@ -146,7 +146,10 @@ export function panelTotalLine(totals: Totals): string {
   return `Total: ${formatTokens(totals.tokens)} tokens · ${totals.loads} loads · ${totals.skills} skills`
 }
 
-export function panelTitle(metric: Metric, charsPerToken = 4): string {
+/** `charsPerToken` is deliberately required: the title must state the divisor the
+ * numbers were actually computed with, so a call site that forgets to pass it
+ * should fail the typecheck rather than silently fall back to 4. */
+export function panelTitle(metric: Metric, charsPerToken: number): string {
   return `Skill Token Usage — ${metric} (${metricQualifier(metric, charsPerToken)})`
 }
 

@@ -197,8 +197,8 @@ describe("panelTotalLine", () => {
 
 describe("panelTitle", () => {
   it("names the live metric and how it was derived", () => {
-    expect(panelTitle("content")).toBe("Skill Token Usage — content (estimated from chars/4)")
-    expect(panelTitle("spend")).toBe("Skill Token Usage — spend (approximate even-split attribution)")
+    expect(panelTitle("content", 4)).toBe("Skill Token Usage — content (estimated from chars/4)")
+    expect(panelTitle("spend", 4)).toBe("Skill Token Usage — spend (approximate even-split attribution)")
   })
 
   it("reports the configured divisor, unrounded", () => {
