@@ -29,8 +29,9 @@ export default Plugin.define({
     // Detached: `setup` is awaited by the host, and the event stream never ends,
     // so awaiting it here would deadlock plugin load. Per-event errors are caught
     // so one malformed event cannot end collection.
+    const abort = new AbortController()
     void (async () => {
-      for await (const event of ctx.event.subscribe()) {
+      for await (const event of ctx.event.subscribe({ signal: abort.signal })) {
         try {
           if (event.type === "session.skill.activated") {
             const { sessionID, id, text } = event.data
@@ -46,5 +47,9 @@ export default Plugin.define({
     })().catch((error: unknown) => {
       console.error("opencode-skill-usage: event stream ended", error)
     })
+
+    // Host-disposable: without this, a re-run of `setup` leaves the old loop
+    // subscribed and writing through its own tracker into the same stored row.
+    return () => abort.abort()
   },
 })

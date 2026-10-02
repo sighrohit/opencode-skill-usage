@@ -124,6 +124,7 @@ describe("createCommandHandler", () => {
     expect(sent).toHaveLength(1)
     expect(sent[0]!.sessionID).toBe("ses_1")
     expect(sent[0]!.text).not.toContain("| Skill | Loads | Tokens | Share |")
+    expect(sent[0]!.resume).toBe(false)
     expect(Object.keys(tracker.data().skills)).toEqual([])
 
     await handler(invoke())
