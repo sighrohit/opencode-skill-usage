@@ -19,7 +19,11 @@
     "zod": "4.1.8"
   },
   "devDependencies": {
+    "@opencode/theme": "^2.0.22",
+    "@opentui/core": "^0.5.14",
+    "@opentui/solid": "^0.5.14",
     "@types/node": "^22.0.0",
+    "solid-js": "^1.9.12",
     "typescript": "^5.0.0",
     "vitest": "^3.0.0"
   }
