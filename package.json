@@ -1,7 +1,14 @@
 {
   "name": "opencode-skill-usage",
   "version": "0.1.0",
+  "description": "OpenCode plugin that tracks per-skill token usage and renders it as a descending chart",
+  "keywords": ["opencode", "opencode-plugin", "skills", "token-usage"],
+  "license": "MIT",
   "type": "module",
+  "files": ["src"],
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./rpc": "./src/rpc.ts",
@@ -23,8 +30,13 @@
     "@opentui/core": "^0.5.14",
     "@opentui/solid": "^0.5.14",
     "@types/node": "^22.0.0",
-    "solid-js": "^1.9.12",
+    "solid-js": "1.9.12",
     "typescript": "^5.0.0",
     "vitest": "^3.0.0"
+  },
+  "peerDependencies": {
+    "solid-js": ">=1.9.0",
+    "@opentui/core": ">=0.5.0",
+    "@opentui/solid": ">=0.5.0"
   }
 }
