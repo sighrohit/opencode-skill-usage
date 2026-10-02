@@ -3,6 +3,7 @@ import { DEFAULT_OPTIONS, emptyData, parseOptions } from "./types.js"
 
 describe("parseOptions", () => {
   it("parses defaults from empty input", () => {
+    expect(DEFAULT_OPTIONS).toEqual({ topN: 15, charsPerToken: 4, defaultMetric: "content" })
     expect(parseOptions(undefined)).toEqual(DEFAULT_OPTIONS)
     expect(parseOptions({})).toEqual(DEFAULT_OPTIONS)
   })
