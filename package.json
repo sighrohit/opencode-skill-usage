@@ -5,7 +5,7 @@
   "keywords": ["opencode", "opencode-plugin", "skills", "token-usage"],
   "license": "MIT",
   "type": "module",
-  "files": ["src"],
+  "files": ["src", "!src/**/*.test.ts"],
   "publishConfig": {
     "access": "public"
   },
