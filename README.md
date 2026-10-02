@@ -76,8 +76,9 @@ recorded yet instead of rendering an empty chart.
 | `charsPerToken`  | number               | `4`         | Divisor for the content-token estimate         |
 | `defaultMetric`  | `"content" \| "spend"` | `"content"` | Initial view                                   |
 
-Both numbers are clamped to a minimum of `1`, and unparseable values fall back to the
-defaults.
+Both numbers are clamped to a minimum of `1`. A value that cannot be read as a finite
+number falls back to the default; a readable value below `1` is clamped to `1` instead
+(so e.g. `null`, `""` and `[]`, which coerce to `0`, all yield `1`).
 
 ## Privacy and storage
 
