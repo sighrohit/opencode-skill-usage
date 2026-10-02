@@ -6,7 +6,7 @@ type SetupContext = Parameters<(typeof plugin)["setup"]>[0]
 type Cleanup = ReturnType<(typeof plugin)["setup"]>
 type SubscribeFn = (options?: { signal?: AbortSignal }) => AsyncIterable<unknown>
 
-/** The five fields `setup` actually reads off `Context`. The interface carries ~30. */
+/** The fields `setup` actually reads off `Context`. The interface carries ~30. */
 function createCtx(overrides: { subscribe: SubscribeFn }): {
   ctx: SetupContext
   storage: Map<string, unknown>
@@ -32,9 +32,15 @@ function createCtx(overrides: { subscribe: SubscribeFn }): {
       },
     },
     session: { synthetic: async () => undefined },
+    rpc: {
+      register: async (): Promise<{ dispose: () => Promise<void>; events: { emit: () => Promise<void> } }> => ({
+        dispose: async () => {},
+        events: { emit: async () => {} },
+      }),
+    },
   }
   return {
-    // Context is a ~30-domain interface; setup reads five. Casting the double is
+    // Context is a ~30-domain interface; setup reads six. Casting the double is
     // cheaper than restating domains the plugin never touches.
     ctx: ctx as unknown as SetupContext,
     storage,

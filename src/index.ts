@@ -1,5 +1,6 @@
 import { Plugin } from "@opencode/plugin"
 import { createCommandHandler } from "./command.js"
+import { createSkillUsageHandlers, SkillUsage } from "./rpc.js"
 import { createPluginStore } from "./store.js"
 import { createTracker } from "./tracker.js"
 import { parseOptions } from "./types.js"
@@ -11,7 +12,30 @@ export default Plugin.define({
     // ctx.storage is backed by the server's single global `kv` table, namespaced
     // per plugin id, so usage stats are shared across every project.
     const store = createPluginStore(ctx.storage)
-    const tracker = await createTracker({ store, charsPerToken: options.charsPerToken })
+
+    // `createTracker` needs `onChange` but the emitter it feeds comes back from
+    // `register` below, so the tracker is wired to a late-bound slot. Nothing
+    // can flush before registration resolves: the only mutation paths are the
+    // command and the event loop, both started after it.
+    let emitUpdated: () => void = () => {}
+    const tracker = await createTracker({
+      store,
+      charsPerToken: options.charsPerToken,
+      onChange: () => emitUpdated(),
+    })
+
+    const registration = await ctx.rpc.register(
+      SkillUsage,
+      createSkillUsageHandlers({ tracker, options }),
+    )
+    // `emit` is async and `onChange` is not, so the rejection is absorbed here
+    // rather than surfacing as an unhandled promise from inside the tracker's
+    // synchronous flush.
+    emitUpdated = () => {
+      void registration.events.emit("updated", {}).catch((error: unknown) => {
+        console.error("opencode-skill-usage: failed to emit updated", error)
+      })
+    }
 
     await ctx.command.transform((editor) =>
       editor.add({
@@ -50,6 +74,12 @@ export default Plugin.define({
 
     // Host-disposable: without this, a re-run of `setup` leaves the old loop
     // subscribed and writing through its own tracker into the same stored row.
-    return () => abort.abort()
+    return () => {
+      abort.abort()
+      // Same reason: a stale registration would keep serving the previous
+      // generation's handlers and emitting into it.
+      emitUpdated = () => {}
+      return registration.dispose()
+    }
   },
 })
