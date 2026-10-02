@@ -215,8 +215,9 @@ describe("SkillUsage registration", () => {
     await handlers.reset({}, CALL_CONTEXT)
     expect(emitted).toEqual([{ name: "updated", data: {} }])
 
-    // A reset flushes too, so it is followed by a second emit from its own
-    // handler — never a fabricated one from the tracker.
+    // `handlers.reset` emits nothing itself: the single emit above came from
+    // `tracker.reset()`'s flush, which is why exactly one is asserted. A
+    // following stats call must not add another.
     const before = emitted.length
     await handlers.stats({}, CALL_CONTEXT)
     expect(emitted).toHaveLength(before)
