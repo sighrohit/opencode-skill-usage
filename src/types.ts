@@ -64,7 +64,10 @@ export function parseOptions(raw: unknown): Options {
       ? record["defaultMetric"]
       : "content"
   return {
-    topN: coerceClamped(record["topN"], DEFAULT_OPTIONS.topN),
+    // `topN` is a row count, so it is integer by construction: the TUI always
+    // sends it as an explicit `limit`, and the RPC contract requires a positive
+    // integer there. `charsPerToken` stays fractional — it is a divisor.
+    topN: Math.trunc(coerceClamped(record["topN"], DEFAULT_OPTIONS.topN)),
     charsPerToken: coerceClamped(record["charsPerToken"], DEFAULT_OPTIONS.charsPerToken),
     defaultMetric,
   }

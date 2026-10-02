@@ -20,6 +20,19 @@ describe("parseOptions", () => {
       defaultMetric: "spend",
     })
   })
+
+  it("truncates a fractional topN to an integer row count", () => {
+    // The RPC `limit` is `z.number().int().positive()`, and the TUI always sends
+    // topN explicitly, so a fraction here would break the panel permanently.
+    expect(parseOptions({ topN: 3.7 }).topN).toBe(3)
+    expect(parseOptions({ topN: 3.7, charsPerToken: 3.7 })).toEqual({
+      topN: 3,
+      charsPerToken: 3.7,
+      defaultMetric: "content",
+    })
+    expect(parseOptions({ topN: 0.5 }).topN).toBe(1)
+  })
+
   it("rejects non-object and non-finite input", () => {
     expect(parseOptions(null)).toEqual(DEFAULT_OPTIONS)
     expect(parseOptions("topN")).toEqual(DEFAULT_OPTIONS)
