@@ -113,6 +113,23 @@ describe("createTracker", () => {
     expect(tracker.data().skills["b"].spend.input).toBeCloseTo(0)
   })
 
+  it("splits across distinct skills, not loads, when one skill loads twice", async () => {
+    const { storage } = createFakeStorage()
+    const tracker = await createTestTracker(createPluginStore(storage))
+
+    await tracker.handleSkillActivated({ sessionID: "s1", id: "a", text: text(40) })
+    await tracker.handleSkillActivated({ sessionID: "s1", id: "a", text: text(40) })
+    await tracker.handleSkillActivated({ sessionID: "s1", id: "b", text: text(40) })
+    await tracker.handleStepEnded({ sessionID: "s1", tokens: { input: 100 } })
+
+    // Assert each side separately: a counting structure (size 2, one iteration)
+    // would give a ≈ 100 and b ≈ 0, and a total-only assertion would miss it.
+    expect(tracker.data().skills["a"].spend.input).toBeCloseTo(50)
+    expect(tracker.data().skills["b"].spend.input).toBeCloseTo(50)
+    // The duplicate load still counts as a load.
+    expect(tracker.data().skills["a"].loads).toBe(2)
+  })
+
   it("ignores step events for sessions with no skills", async () => {
     const { storage } = createFakeStorage()
     const tracker = await createTestTracker(createPluginStore(storage))
