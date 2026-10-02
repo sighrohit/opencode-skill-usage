@@ -78,7 +78,10 @@ recorded yet instead of rendering an empty chart.
 
 Both numbers are clamped to a minimum of `1`. A value that cannot be read as a finite
 number falls back to the default; a readable value below `1` is clamped to `1` instead
-(so e.g. `null`, `""` and `[]`, which coerce to `0`, all yield `1`).
+(so e.g. `null`, `""` and `[]`, which coerce to `0`, all yield `1`). `topN` is a row
+count, so a fractional value is truncated after clamping — `15.9` gives `15` and `1.9`
+gives `1`. `charsPerToken` is a divisor, so it keeps its fractional part (`3.7` is
+used as `3.7`).
 
 ## Privacy and storage
 
