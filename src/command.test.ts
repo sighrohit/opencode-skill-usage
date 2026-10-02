@@ -85,6 +85,22 @@ describe("createCommandHandler", () => {
     expect(sent[0]!.text).not.toContain("content (estimated from chars/4)")
   })
 
+  it("renders the configured charsPerToken in the header", async () => {
+    const tracker = await loadedTracker()
+    const { sent, synthetic } = recorder()
+    const handler = createCommandHandler({
+      tracker,
+      options: options({ charsPerToken: 3 }),
+      synthetic,
+    })
+
+    await handler(invoke())
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]!.text).toContain("content (estimated from chars/3)")
+    expect(sent[0]!.text).not.toContain("chars/4")
+  })
+
   it("falls through to defaultMetric for an unrecognised arg", async () => {
     const tracker = await loadedTracker()
     const { sent, synthetic } = recorder()

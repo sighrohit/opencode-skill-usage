@@ -1,7 +1,8 @@
 import type { Metric, Row, SkillStats, Totals, UsageData } from "./types.js"
 
-const FILLED = "█"
-const EMPTY = "░"
+/** The two bar glyphs. `tui.tsx` imports these so the pair has one owner. */
+export const BAR_FILLED = "█"
+export const BAR_EMPTY = "░"
 const DEFAULT_BAR_WIDTH = 20
 
 export function spendTotal(s: SkillStats["spend"]): number {
@@ -69,7 +70,7 @@ export function barSegments(share: number, width: number): { filled: number; emp
 
 export function bar(share: number, width: number = DEFAULT_BAR_WIDTH): string {
   const { filled, empty } = barSegments(share, width)
-  return FILLED.repeat(filled) + EMPTY.repeat(empty)
+  return BAR_FILLED.repeat(filled) + BAR_EMPTY.repeat(empty)
 }
 
 /** One decimal via Math.round on a scaled integer, so `.x5` ties round half up. */
@@ -83,13 +84,29 @@ export function formatTokens(n: number): string {
   return String(Math.round(n))
 }
 
-const HEADERS: Record<Metric, string> = {
-  content: "## Skill Token Usage — content (estimated from chars/4)",
-  spend: "## Skill Token Usage — session spend (approximate even-split attribution)",
+/**
+ * The parenthetical that says how the active metric was derived. It is the one
+ * owner of the qualifier strings: `tui.tsx` renders the same qualifier in its
+ * panel title, so both surfaces must stay in lockstep.
+ */
+export function metricQualifier(metric: Metric, charsPerToken: number): string {
+  return metric === "content"
+    ? `estimated from chars/${charsPerToken}`
+    : "approximate even-split attribution"
 }
 
-export function renderMarkdown(rows: Row[], metric: Metric, totalsOverride?: Totals): string {
-  const lines: string[] = [HEADERS[metric]]
+const HEADERS: Record<Metric, string> = {
+  content: "## Skill Token Usage — content",
+  spend: "## Skill Token Usage — session spend",
+}
+
+export function renderMarkdown(
+  rows: Row[],
+  metric: Metric,
+  totalsOverride?: Totals,
+  charsPerToken = 4,
+): string {
+  const lines: string[] = [`${HEADERS[metric]} (${metricQualifier(metric, charsPerToken)})`]
   if (rows.length === 0) {
     lines.push("", "_No skill usage recorded yet._")
     return lines.join("\n")

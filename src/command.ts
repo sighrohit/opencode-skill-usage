@@ -50,8 +50,9 @@ export function createCommandHandler(deps: {
     const data = tracker.data()
     const rows = toRows(data, metric, options.topN)
     // Totals are computed from every skill, so pass them explicitly rather than
-    // letting renderMarkdown sum the rounded, limited rows.
-    const text = renderMarkdown(rows, metric, totals(rows, data, metric))
+    // letting renderMarkdown sum the rounded, limited rows. The qualifier then
+    // reports the same divisor the tracker actually divided by.
+    const text = renderMarkdown(rows, metric, totals(rows, data, metric), options.charsPerToken)
     await synthetic({ sessionID, text, resume: false })
   }
 }

@@ -1,7 +1,7 @@
 import { Plugin } from "@opencode/plugin/tui"
 import type { Accessor } from "solid-js"
 import { For, createEffect, createMemo, createRoot, createSignal, onCleanup, onMount } from "solid-js"
-import { barSegments, formatTokens } from "./chart.js"
+import { BAR_EMPTY, BAR_FILLED, barSegments, formatTokens, metricQualifier } from "./chart.js"
 import { SkillUsage } from "./rpc.js"
 import { parseOptions } from "./types.js"
 import type { Metric, Options, Row, Totals } from "./types.js"
@@ -9,10 +9,6 @@ import type { Metric, Options, Row, Totals } from "./types.js"
 /** Panel content name, guarded against in the `session.panel` slot render. */
 const PANEL_NAME = "skill-usage"
 const PANEL_SLOT = "session.panel"
-
-/** The two bar glyphs. Fixed by the spec; `chart.ts` uses the same pair. */
-const BAR_FILLED = "█"
-const BAR_EMPTY = "░"
 
 /** One blank column between the skill name and the loads column, and after it. */
 const GUTTER = 1
@@ -25,12 +21,6 @@ const PADDING_TRAILING = 1
 const FRAME_COLUMNS = 2 + PADDING_LEFT + PADDING_TRAILING
 
 const KEY_HINTS = "[m]etric [f]ullscreen [esc] close"
-
-/** Same qualifiers `chart.ts` puts in its markdown headers, minus the parentheses. */
-const METRIC_DESCRIPTION: Record<Metric, string> = {
-  content: "estimated from chars/4",
-  spend: "approximate even-split attribution",
-}
 
 /** Matches `_No skill usage recorded yet._` in the markdown renderer, without the markup. */
 const EMPTY_MESSAGE = "No skill usage recorded yet."
@@ -156,8 +146,8 @@ export function panelTotalLine(totals: Totals): string {
   return `Total: ${formatTokens(totals.tokens)} tokens · ${totals.loads} loads · ${totals.skills} skills`
 }
 
-export function panelTitle(metric: Metric): string {
-  return `Skill Token Usage — ${metric} (${METRIC_DESCRIPTION[metric]})`
+export function panelTitle(metric: Metric, charsPerToken = 4): string {
+  return `Skill Token Usage — ${metric} (${metricQualifier(metric, charsPerToken)})`
 }
 
 /** `Error` messages read better in a toast than `String(cause)`; anything else still has to render. */
@@ -291,7 +281,7 @@ function SkillUsagePanel(props: {
   const columns = createMemo(() => panelColumns(panelContentWidth(props.input.width), rows()))
   const header = createMemo(() => panelHeaderCells(columns()))
   const lines = createMemo(() => rows().map((row) => panelRowCells(row, columns())))
-  const title = createMemo(() => panelTitle(props.metric()))
+  const title = createMemo(() => panelTitle(props.metric(), props.options.charsPerToken))
   const total = createMemo(() => panelTotalLine(snapshot().totals))
 
   function body() {

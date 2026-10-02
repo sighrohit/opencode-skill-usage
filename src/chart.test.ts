@@ -197,6 +197,22 @@ describe("renderMarkdown", () => {
     expect(out).toContain("**Total:**")
   })
 
+  it("reports the configured divisor in the content header", () => {
+    // Fractional on purpose: the qualifier must show the exact divisor in use,
+    // not a rounded or coerced 3 or 4.
+    const out = renderMarkdown(rows, "content", undefined, 3.7)
+    expect(out).toContain("## Skill Token Usage — content (estimated from chars/3.7)")
+    expect(out).not.toContain("chars/4")
+    expect(renderMarkdown(rows, "content", undefined, 3)).toContain("estimated from chars/3")
+  })
+
+  it("leaves the spend header divisor-independent", () => {
+    const out = renderMarkdown(rows, "spend", undefined, 3.7)
+    expect(out).toContain(
+      "## Skill Token Usage — session spend (approximate even-split attribution)",
+    )
+  })
+
   it("labels the spend header with its approximation caveat", () => {
     const out = renderMarkdown(rows, "spend")
     expect(out).toContain(

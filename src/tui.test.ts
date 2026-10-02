@@ -200,6 +200,16 @@ describe("panelTitle", () => {
     expect(panelTitle("content")).toBe("Skill Token Usage — content (estimated from chars/4)")
     expect(panelTitle("spend")).toBe("Skill Token Usage — spend (approximate even-split attribution)")
   })
+
+  it("reports the configured divisor, unrounded", () => {
+    expect(panelTitle("content", 3.7)).toBe(
+      "Skill Token Usage — content (estimated from chars/3.7)",
+    )
+    expect(panelTitle("content", 3)).toBe("Skill Token Usage — content (estimated from chars/3)")
+    expect(panelTitle("spend", 3.7)).toBe(
+      "Skill Token Usage — spend (approximate even-split attribution)",
+    )
+  })
 })
 
 describe("describeError", () => {
