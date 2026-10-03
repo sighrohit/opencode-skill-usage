@@ -4,6 +4,14 @@
   "description": "OpenCode plugin that tracks per-skill token usage and renders it as a descending chart",
   "keywords": ["opencode", "opencode-plugin", "skills", "token-usage"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sighrohit/opencode-skill-usage.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sighrohit/opencode-skill-usage/issues"
+  },
+  "homepage": "https://github.com/sighrohit/opencode-skill-usage#readme",
   "type": "module",
   "files": ["src", "!src/**/*.test.ts"],
   "publishConfig": {
