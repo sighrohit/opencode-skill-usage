@@ -1,8 +1,18 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, beforeEach } from "vitest"
 import plugin from "./index.js"
 import { STORAGE_KEY } from "./store.js"
 
 type SetupContext = Parameters<(typeof plugin)["setup"]>[0]
+
+const commandTransformSpy = {
+  called: false,
+  lastCallback: null as ((editor: { add: (def: unknown) => void }) => void) | null,
+}
+
+function resetSpy(): void {
+  commandTransformSpy.called = false
+  commandTransformSpy.lastCallback = null
+}
 type Cleanup = ReturnType<(typeof plugin)["setup"]>
 type SubscribeFn = (options?: { signal?: AbortSignal }) => AsyncIterable<unknown>
 
@@ -27,6 +37,8 @@ function createCtx(overrides: { subscribe: SubscribeFn }): {
     },
     command: {
       transform: async (callback: (editor: { add: (definition: unknown) => void }) => void) => {
+        commandTransformSpy.called = true
+        commandTransformSpy.lastCallback = callback
         callback({ add: () => {} })
         return { dispose: async () => {} }
       },
@@ -126,6 +138,17 @@ function recordedSkills(storage: Map<string, unknown>): string[] {
 }
 
 describe("setup teardown", () => {
+  beforeEach(() => resetSpy())
+
+  it("does not register an editor command (single-name /skills mirror)", async () => {
+    const events = controllableEvents()
+    const { ctx } = createCtx({ subscribe: events.subscribe })
+
+    await plugin.setup(ctx)
+
+    expect(commandTransformSpy.called).toBe(false)
+  })
+
   it("aborts the event loop on cleanup and stops recording", async () => {
     const events = controllableEvents()
     const { ctx, storage } = createCtx({ subscribe: events.subscribe })

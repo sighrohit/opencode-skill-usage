@@ -1,5 +1,4 @@
 import { Plugin } from "@opencode/plugin"
-import { createCommandHandler } from "./command.js"
 import { createSkillUsageHandlers, SkillUsage } from "./rpc.js"
 import { createPluginStore } from "./store.js"
 import { createTracker } from "./tracker.js"
@@ -36,19 +35,6 @@ export default Plugin.define({
         console.error("opencode-skill-usage: failed to emit updated", error)
       })
     }
-
-    await ctx.command.transform((editor) =>
-      editor.add({
-        name: "skill-usage",
-        description: "Show per-skill token usage chart",
-        // Wrapped rather than passed by reference so it never depends on `this`.
-        execute: createCommandHandler({
-          tracker,
-          options,
-          synthetic: (msg) => ctx.session.synthetic(msg),
-        }),
-      }),
-    )
 
     // Detached: `setup` is awaited by the host, and the event stream never ends,
     // so awaiting it here would deadlock plugin load. Per-event errors are caught

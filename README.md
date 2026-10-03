@@ -20,8 +20,8 @@ network calls, no data leaves your machine.
 
 ## Metrics
 
-The plugin tracks two metrics. `/skill-usage content` and `/skill-usage spend` select the
-initial view; in the TUI panel, `m` toggles between them at any time. Rows are always
+The plugin tracks two metrics. `/skill-usage content` and `/skill-usage spend` open the panel with the
+selected metric; in the TUI panel, `m` toggles between them at any time. Rows are always
 sorted in descending order by the active metric.
 
 - **content tokens** — the estimated size of the skill content injected into context
@@ -71,15 +71,15 @@ with `package` and `options` keys.
 
 ## Usage
 
-| Command                        | Effect                                                    |
-| ------------------------------ | --------------------------------------------------------- |
-| `/skill-usage`                 | Opens the panel in the TUI; posts a markdown table elsewhere |
-| `/skill-usage content`         | Opens with the content metric selected                    |
-| `/skill-usage spend`           | Opens with the spend metric selected                      |
-| `/skill-usage reset`           | Clears all recorded stats in both surfaces                |
+| Command                 | Effect                                                     |
+| ----------------------- | ---------------------------------------------------------- |
+| `/skill-usage`          | Opens the skill usage panel in the TUI                     |
+| `/skill-usage content`  | Opens panel with content metric selected                   |
+| `/skill-usage spend`    | Opens panel with spend metric selected                     |
+| `/skill-usage reset`    | Clears all recorded stats (and posts confirmation)         |
 
-> [!WARNING]
-> `/skill-usage reset` is destructive and there is no undo.
+> [!NOTE]
+> Single name, single command — mirrors the built-in `/skills` behaviour. `/skill-usage` opens the panel in the TUI; the server editor command that previously posted markdown tables was removed. Metric arguments (`content`/`spend`/`reset`) arrive via `arguments: true` and are handled by `parsePanelIntent`; `m` still toggles content ↔ spend inside the panel.
 
 Panel keys (active while the panel is focused):
 
@@ -144,13 +144,7 @@ possible via `/skill-usage reset` (destructive, no undo).
   tool accepts `{ id }` only — there is no `path` input — so sub-file reads inside a skill
   (reference docs and the like) inject content that this plugin never sees. If your numbers
   look lower than expected, this is the most likely reason.
-- **TUI-vs-server command precedence is an assumption, not a verified fact.** The TUI plugin
-  registers a `/skill-usage` slash command that opens the panel; the server plugin registers
-  a `/skill-usage` command that posts a markdown table into the chat. The intent is that the
-  TUI one wins inside the TUI (so non-TUI clients — `opencode run`, the web app — still get
-  the markdown table). This was never executed against a live TUI, so if both surfaces fire or
-  the wrong one wins, the keymap command ids (`skill-usage.open` / `skill-usage.toggle-metric`
-  / `skill-usage.fullscreen` / `skill-usage.close`) are where to start looking.
+- **Single `/skill-usage` command.** The server editor command that previously posted markdown tables was deleted. The TUI keymap command now owns the name with both `palette: true` and `slash: { name: "skill-usage", arguments: true }` — exactly mirroring the built-in `/skills` command. `/skill-usage` opens the panel; metric arguments (`content`/`spend`/`reset`) arrive via `arguments: true` and are handled by `parsePanelIntent`. The earlier assumption that the host would arbitrate namespaces was incorrect — it lists both, causing duplicates.
 
 ## Contributing
 

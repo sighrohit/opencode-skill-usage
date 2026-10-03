@@ -1,9 +1,18 @@
+/** @jsxImportSource @opentui/solid */
+// Load-bearing, not decoration: OpenCode's Solid JSX transform skips anything
+// inside `node_modules`, and this file always is once packaged. Without this
+// pragma the transpiler falls back to React and the panel fails with
+// `Cannot find package 'react'`. `tsconfig.json` cannot cover it — the runtime
+// transpiler reads tsconfig from the process cwd, not the imported package.
+// Keep this pragma on a single line: the parser captures to end-of-line and a
+// trailing newline becomes part of the module specifier.
 import { Plugin } from "@opencode/plugin/tui"
 import type { Accessor } from "solid-js"
-import { For, createEffect, createMemo, createRoot, createSignal, onCleanup, onMount } from "solid-js"
+import { For, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import { BAR_EMPTY, BAR_FILLED, barSegments, formatTokens, metricQualifier } from "./chart.js"
 import { SkillUsage } from "./rpc.js"
 import { parseOptions } from "./types.js"
+import type { LocationRef } from "@opencode/client"
 import type { Metric, Options, Row, Totals } from "./types.js"
 
 /** Panel content name, guarded against in the `session.panel` slot render. */
@@ -155,7 +164,16 @@ export function panelTitle(metric: Metric, charsPerToken: number): string {
 
 /** `Error` messages read better in a toast than `String(cause)`; anything else still has to render. */
 export function describeError(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause)
+  if (cause instanceof Error) return cause.message
+  if (typeof cause === "object" && cause !== null && "message" in cause && typeof (cause as { message: unknown }).message === "string") {
+    return (cause as { message: string }).message
+  }
+  return String(cause)
+}
+
+/** Returns the `location` query param required by the host's RPC route. Omitting it causes HTTP 400 before the handler runs. */
+export function rpcLocation(ctx: Plugin.Context): { location: LocationRef } {
+  return { location: ctx.location ?? ctx.data.location.default() }
 }
 
 interface Snapshot {
@@ -232,7 +250,10 @@ function SkillUsagePanel(props: {
   async function load(active: Metric): Promise<void> {
     const ticket = ++latest
     try {
-      const result = await rpc.stats({ metric: active, limit: props.options.topN })
+      const result = await rpc.stats(
+        { metric: active, limit: props.options.topN },
+        rpcLocation(props.ctx),
+      )
       if (ticket !== latest) return
       setSnapshot({ rows: result.rows, totals: result.totals })
       setFailure(undefined)
@@ -336,22 +357,37 @@ export default Plugin.define({
     // is already open, and so `m` survives the panel closing and reopening.
     const [metric, setMetric] = createSignal<Metric>(options.defaultMetric)
 
-    // `keymap.layer` is a reactive primitive, so the plugin-wide slash command
-    // layer is anchored in a root this plugin owns and disposes on cleanup.
-    const disposeLayer = createRoot((dispose) => {
+    // `keymap.layer` must be created inside the host's `Keymap.Provider`, which
+    // only exists within its Solid tree. Two places look available and neither is:
+    // `setup()` runs outside the tree and throws "Keymap.Provider is missing", and
+    // the `session.panel` slot renders only while the panel is ALREADY open, which
+    // would put the command that opens the panel inside the panel it opens.
+    // The `app` slot is always mounted, so it is the one registration point that is
+    // in the tree from startup. This mirrors the documented session-panel pattern.
+    const openCommand = () => {
       ctx.keymap.layer(() => ({
+        // Without this the layer defaults to mode "base" and is scoped to that
+        // input mode only, which is not where the palette dispatches from. The
+        // documented session-panel example registers "global" for the same reason.
+        mode: "global",
         commands: [
           {
             id: "skill-usage.open",
             title: "Skill token usage",
             description: "Show per-skill token usage",
-            // Keeps `/skill-usage` in the prompt and hands its raw input to run.
+            palette: true,
+            // Host does not arbitrate between namespaces — it lists both in `/`
+            // completion. The earlier fix (round 5) declined the name here, but
+            // the target UX is a single `/skill-usage` like `/skills`: one keymap
+            // command with `palette: true` and `slash` that opens the panel.
+            // The server editor command is deleted (see index.ts). This mirrors
+            // the binary's built-in `skills` command shape exactly.
             slash: { name: PANEL_NAME, arguments: true },
             run: async (raw) => {
               const intent = parsePanelIntent(raw)
               if (intent.kind === "reset") {
                 try {
-                  await ctx.client.rpc(SkillUsage).reset({})
+                  await ctx.client.rpc(SkillUsage).reset({}, rpcLocation(ctx))
                   ctx.ui.toast.show({
                     title: "Skill usage",
                     message: "Recorded skill usage cleared.",
@@ -378,13 +414,36 @@ export default Plugin.define({
           },
         ],
       }))
-      return dispose
+    }
+
+    // Always mounted, so this is where the open command gets registered. No
+    // mount guard: the layer belongs to the slot component's lifetime, so it must
+    // be re-created if that component ever remounts.
+    //
+    // Registration is inline in `render`, matching the documented session-panel
+    // recipe and the working `@tarquinen/opencode-dcp` plugin. A previous version
+    // deferred it into a child component's `onMount`; that layer never reached the
+    // keymap, so the command was absent from the command palette and `/skill-usage`
+    // silently resolved to the server's editor command instead.
+    //
+    // What must stay out of `render` is any *reactive read* of keymap state. A debug
+    // pass that called `keymap.commands()` here read a signal that `layer()` then
+    // invalidated, self-invalidating without bound: two toasts a pass flooded the
+    // queue and opencode hung, and the re-entrant renders tripped OpenCode's own
+    // `Stale read from <Show>` assert. Registering here is fine; reading is not.
+    // See plugin-registration.test.ts.
+    const disposeAppSlot = ctx.ui.slot({
+      append: "app",
+      render: () => {
+        openCommand()
+        return null
+      },
     })
 
-    const disposeSlot = ctx.ui.slot({
+    const disposePanelSlot = ctx.ui.slot({
       append: PANEL_SLOT,
-      render: (input) =>
-        input.name === PANEL_NAME ? (
+      render: (input) => {
+        return input.name === PANEL_NAME ? (
           <SkillUsagePanel
             ctx={ctx}
             input={input}
@@ -392,12 +451,13 @@ export default Plugin.define({
             metric={metric}
             setMetric={setMetric}
           />
-        ) : null,
+        ) : null
+      },
     })
 
     const cleanup: Plugin.Cleanup = () => {
-      disposeSlot()
-      disposeLayer()
+      disposeAppSlot()
+      disposePanelSlot()
     }
     return cleanup
   },
